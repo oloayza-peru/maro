@@ -12,20 +12,56 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilos CSS personalizados
+# Estilos CSS personalizados (Fuente Aptos Narrow 9px y ajuste de celdas)
 st.markdown("""
     <style>
-    .stButton button {
-        padding: 2px 8px;
-        font-size: 14px;
-        margin: 0px;
+    /* Fuente global Aptos Narrow / Arial Narrow 9px */
+    html, body, [class*="css"], div, span, p, label, input, button, select {
+        font-family: 'Aptos Narrow', 'Arial Narrow', sans-serif !important;
+        font-size: 9px !important;
     }
+
+    /* Control de botones compactos */
+    .stButton button {
+        padding: 1px 4px !important;
+        font-size: 9px !important;
+        height: 20px !important;
+        line-height: 1 !important;
+        margin: 0px !important;
+    }
+
+    /* Celdas fijas con ajuste perfecto para evitar desbordamiento y aumento de altura */
+    .cell-box {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        height: 22px;
+        line-height: 22px;
+        padding: 0 4px;
+        display: block;
+        font-size: 9px !important;
+    }
+
+    .cell-box-header {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        height: 22px;
+        line-height: 22px;
+        padding: 0 4px;
+        font-weight: bold;
+        display: block;
+        font-size: 9px !important;
+    }
+
+    /* Fila seleccionada */
     .selected-row {
         background-color: #fff3cd !important;
         color: #856404 !important;
-        padding: 6px;
-        border-radius: 4px;
+        border-radius: 2px;
     }
+
+    /* Colores para Ventas */
     .text-verde {
         color: #00e676 !important;
         font-weight: bold;
@@ -72,7 +108,6 @@ if "ventas" not in st.session_state:
         {"ID Venta": "V-502", "Fecha de Venta": "2026-09-29", "Cliente": "Carlos Mendoza", "Pago": "Transferencia", "Estado": "Pendiente", "Producto": "ART-002", "Cantidad": 1, "Monto (S/.)": 45.0},
     ])
 
-# Estado para controlar filas en edición y seleccionadas
 if "edit_target" not in st.session_state:
     st.session_state.edit_target = {"tab": None, "id": None}
 
@@ -80,7 +115,7 @@ if "selected_rows" not in st.session_state:
     st.session_state.selected_rows = {"inventario": set(), "clientes": set(), "inversiones": set(), "ventas": set()}
 
 # -----------------------------------------------------------------------------
-# FUNCIONES CÁLCULO DINÁMICO DE CANTIDAD TOTAL Y STOCK DISPONIBLE
+# FUNCIONES AUXILIARES
 # -----------------------------------------------------------------------------
 def get_cantidad_total(codigo_producto):
     if st.session_state.inversiones.empty:
@@ -113,6 +148,13 @@ def render_styled_text(val, tipo):
             return f'<span class="text-rojo">{val}</span>'
     return val
 
+def render_cell(text, is_selected=False):
+    sel_class = " selected-row" if is_selected else ""
+    return f'<div class="cell-box{sel_class}" title="{text}">{text}</div>'
+
+def render_header(text):
+    return f'<div class="cell-box-header" title="{text}">{text}</div>'
+
 # -----------------------------------------------------------------------------
 # BARRA LATERAL (NAVEGACIÓN)
 # -----------------------------------------------------------------------------
@@ -132,19 +174,18 @@ if pestana == "1: Inventario":
     st.caption("Cantidad Total (Ingresos por Inversiones) y Stock Disponible (Cantidad Total - Vendidos)")
 
     st.markdown("### Listado de Inventario")
-    cols = st.columns([0.5, 1.2, 1.2, 1.3, 1.3, 2.0, 0.8, 0.8])
+    cols = st.columns([0.4, 1.2, 1.2, 1.3, 1.3, 2.0, 0.6, 0.6])
     headers = ["Sel.", "Código", "Tipo", "Cantidad Total", "Stock (Disponible)", "Última Fecha Ingreso", "Editar", "Eliminar"]
     for c, h in zip(cols, headers):
-        c.markdown(f"**{h}**")
+        c.markdown(render_header(h), unsafe_allow_html=True)
     st.markdown("---")
 
     for idx, row in st.session_state.inventario.iterrows():
-        c0, c1, c2, c3, c4, c5, c6, c7 = st.columns([0.5, 1.2, 1.2, 1.3, 1.3, 2.0, 0.8, 0.8])
+        c0, c1, c2, c3, c4, c5, c6, c7 = st.columns([0.4, 1.2, 1.2, 1.3, 1.3, 2.0, 0.6, 0.6])
         
         cod = row["Código"]
         is_selected = cod in st.session_state.selected_rows["inventario"]
         
-        # Checkbox de Selección
         sel = c0.checkbox("", key=f"sel_inv_{cod}", value=is_selected)
         if sel and not is_selected:
             st.session_state.selected_rows["inventario"].add(cod)
@@ -159,18 +200,11 @@ if pestana == "1: Inventario":
         is_editing = (st.session_state.edit_target["tab"] == "inventario" and st.session_state.edit_target["id"] == cod)
         prefix = "👉 " if is_editing else ""
 
-        if is_selected:
-            c1.markdown(f'<div class="selected-row">{prefix}{cod}</div>', unsafe_allow_html=True)
-            c2.markdown(f'<div class="selected-row">{row["Tipo"]}</div>', unsafe_allow_html=True)
-            c3.markdown(f'<div class="selected-row"><b>{cant_total}</b></div>', unsafe_allow_html=True)
-            c4.markdown(f'<div class="selected-row"><b>{stock_disp}</b></div>', unsafe_allow_html=True)
-            c5.markdown(f'<div class="selected-row">{row["Última Fecha de Ingreso de Inversión"]}</div>', unsafe_allow_html=True)
-        else:
-            c1.write(f"{prefix}{cod}")
-            c2.write(row["Tipo"])
-            c3.write(f"**{cant_total}**")
-            c4.write(f"**{stock_disp}**")
-            c5.write(str(row["Última Fecha de Ingreso de Inversión"]))
+        c1.markdown(render_cell(f"{prefix}{cod}", is_selected), unsafe_allow_html=True)
+        c2.markdown(render_cell(row["Tipo"], is_selected), unsafe_allow_html=True)
+        c3.markdown(render_cell(f"<b>{cant_total}</b>", is_selected), unsafe_allow_html=True)
+        c4.markdown(render_cell(f"<b>{stock_disp}</b>", is_selected), unsafe_allow_html=True)
+        c5.markdown(render_cell(str(row["Última Fecha de Ingreso de Inversión"]), is_selected), unsafe_allow_html=True)
         
         if c6.button("✏️", key=f"edit_inv_{cod}"):
             st.session_state.edit_target = {"tab": "inventario", "id": cod}
@@ -183,7 +217,6 @@ if pestana == "1: Inventario":
             st.success(f"Producto {cod} eliminado.")
             st.rerun()
 
-    # Formulario desplegable para EDITAR
     if st.session_state.edit_target["tab"] == "inventario":
         st.markdown("---")
         target_id = st.session_state.edit_target["id"]
@@ -201,15 +234,14 @@ if pestana == "1: Inventario":
                     st.session_state.inventario.at[idx_target, "Tipo"] = tipo_edit
                     st.session_state.inventario.at[idx_target, "Última Fecha de Ingreso de Inversión"] = str(fecha_edit)
                     st.session_state.edit_target = {"tab": None, "id": None}
-                    st.success("¡Registro de inventario actualizado correctamente!")
+                    st.success("¡Registro actualizado!")
                     st.rerun()
 
-    # Formulario para AÑADIR NUEVO
     st.markdown("---")
     with st.expander("➕ Añadir Nuevo Producto al Inventario"):
         with st.form("form_add_inv", clear_on_submit=True):
             col_a1, col_a2, col_a3 = st.columns(3)
-            cod_new = col_a1.text_input("Código de Producto (ej. COL-005)")
+            cod_new = col_a1.text_input("Código de Producto")
             tipo_new = col_a2.selectbox("Tipo de Producto", ["Collar", "Arete", "Pulsera", "Aro"])
             fecha_new = col_a3.date_input("Fecha de Ingreso", value=date.today())
 
@@ -237,14 +269,14 @@ elif pestana == "2: Clientes":
     st.caption("Directorio de clientes de MARO")
 
     st.markdown("### Registro de Clientes")
-    cols = st.columns([0.5, 1, 2, 2, 2, 0.8, 0.8])
+    cols = st.columns([0.4, 0.8, 2, 2, 2, 0.6, 0.6])
     headers = ["Sel.", "ID", "Nombre", "Apellido", "Celular", "Editar", "Eliminar"]
     for c, h in zip(cols, headers):
-        c.markdown(f"**{h}**")
+        c.markdown(render_header(h), unsafe_allow_html=True)
     st.markdown("---")
 
     for idx, row in st.session_state.clientes.iterrows():
-        c0, c1, c2, c3, c4, c5, c6 = st.columns([0.5, 1, 2, 2, 2, 0.8, 0.8])
+        c0, c1, c2, c3, c4, c5, c6 = st.columns([0.4, 0.8, 2, 2, 2, 0.6, 0.6])
         
         cid = row["ID"]
         is_selected = cid in st.session_state.selected_rows["clientes"]
@@ -260,16 +292,10 @@ elif pestana == "2: Clientes":
         is_editing = (st.session_state.edit_target["tab"] == "clientes" and st.session_state.edit_target["id"] == cid)
         prefix = "👉 " if is_editing else ""
 
-        if is_selected:
-            c1.markdown(f'<div class="selected-row">{prefix}{cid}</div>', unsafe_allow_html=True)
-            c2.markdown(f'<div class="selected-row">{row["Nombre"]}</div>', unsafe_allow_html=True)
-            c3.markdown(f'<div class="selected-row">{row["Apellido"]}</div>', unsafe_allow_html=True)
-            c4.markdown(f'<div class="selected-row">{row["Celular"]}</div>', unsafe_allow_html=True)
-        else:
-            c1.write(f"{prefix}{cid}")
-            c2.write(row["Nombre"])
-            c3.write(row["Apellido"])
-            c4.write(row["Celular"])
+        c1.markdown(render_cell(f"{prefix}{cid}", is_selected), unsafe_allow_html=True)
+        c2.markdown(render_cell(row["Nombre"], is_selected), unsafe_allow_html=True)
+        c3.markdown(render_cell(row["Apellido"], is_selected), unsafe_allow_html=True)
+        c4.markdown(render_cell(row["Celular"], is_selected), unsafe_allow_html=True)
 
         if c5.button("✏️", key=f"edit_cli_{cid}"):
             st.session_state.edit_target = {"tab": "clientes", "id": cid}
@@ -301,7 +327,7 @@ elif pestana == "2: Clientes":
                     st.session_state.clientes.at[idx_target, "Apellido"] = ape_edit
                     st.session_state.clientes.at[idx_target, "Celular"] = cel_edit
                     st.session_state.edit_target = {"tab": None, "id": None}
-                    st.success("¡Datos del cliente actualizados!")
+                    st.success("¡Datos actualizados!")
                     st.rerun()
 
     st.markdown("---")
@@ -336,14 +362,14 @@ elif pestana == "3: Inversiones":
     st.caption("Registro de inversiones y compras de productos por tipo")
 
     st.markdown("### Historial de Inversiones")
-    cols = st.columns([0.5, 1.1, 1.3, 1.3, 1.2, 1.2, 1.3, 0.8, 0.8])
+    cols = st.columns([0.4, 1.1, 1.2, 1.2, 1.1, 1.1, 1.2, 0.6, 0.6])
     headers = ["Sel.", "ID Inversión", "Fecha", "Monto (S/.)", "Producto", "Tipo Producto", "Cant. Ingresada", "Editar", "Eliminar"]
     for c, h in zip(cols, headers):
-        c.markdown(f"**{h}**")
+        c.markdown(render_header(h), unsafe_allow_html=True)
     st.markdown("---")
 
     for idx, row in st.session_state.inversiones.iterrows():
-        c0, c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([0.5, 1.1, 1.3, 1.3, 1.2, 1.2, 1.3, 0.8, 0.8])
+        c0, c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([0.4, 1.1, 1.2, 1.2, 1.1, 1.1, 1.2, 0.6, 0.6])
         
         invid = row["ID Inversión"]
         is_selected = invid in st.session_state.selected_rows["inversiones"]
@@ -359,20 +385,12 @@ elif pestana == "3: Inversiones":
         is_editing = (st.session_state.edit_target["tab"] == "inversiones" and st.session_state.edit_target["id"] == invid)
         prefix = "👉 " if is_editing else ""
 
-        if is_selected:
-            c1.markdown(f'<div class="selected-row">{prefix}{invid}</div>', unsafe_allow_html=True)
-            c2.markdown(f'<div class="selected-row">{row["Fecha de Inversión"]}</div>', unsafe_allow_html=True)
-            c3.markdown(f'<div class="selected-row">S/. {row["Monto de Inversión (S/.)"]:.2f}</div>', unsafe_allow_html=True)
-            c4.markdown(f'<div class="selected-row">{row["Producto"]}</div>', unsafe_allow_html=True)
-            c5.markdown(f'<div class="selected-row">{row["Tipo de Producto"]}</div>', unsafe_allow_html=True)
-            c6.markdown(f'<div class="selected-row">{row["Cantidad Ingresada"]}</div>', unsafe_allow_html=True)
-        else:
-            c1.write(f"{prefix}{invid}")
-            c2.write(str(row["Fecha de Inversión"]))
-            c3.write(f"S/. {row['Monto de Inversión (S/.)']:.2f}")
-            c4.write(row["Producto"])
-            c5.write(row["Tipo de Producto"])
-            c6.write(row["Cantidad Ingresada"])
+        c1.markdown(render_cell(f"{prefix}{invid}", is_selected), unsafe_allow_html=True)
+        c2.markdown(render_cell(str(row["Fecha de Inversión"]), is_selected), unsafe_allow_html=True)
+        c3.markdown(render_cell(f"S/. {row['Monto de Inversión (S/.)']:.2f}", is_selected), unsafe_allow_html=True)
+        c4.markdown(render_cell(row["Producto"], is_selected), unsafe_allow_html=True)
+        c5.markdown(render_cell(row["Tipo de Producto"], is_selected), unsafe_allow_html=True)
+        c6.markdown(render_cell(str(row["Cantidad Ingresada"]), is_selected), unsafe_allow_html=True)
 
         if c7.button("✏️", key=f"edit_inv_item_{invid}"):
             st.session_state.edit_target = {"tab": "inversiones", "id": invid}
@@ -412,7 +430,7 @@ elif pestana == "3: Inversiones":
                         st.session_state.inventario.at[idx_inv[0], "Última Fecha de Ingreso de Inversión"] = str(fecha_edit)
 
                     st.session_state.edit_target = {"tab": None, "id": None}
-                    st.success("¡Inversión actualizada con éxito!")
+                    st.success("¡Inversión actualizada!")
                     st.rerun()
 
     st.markdown("---")
@@ -446,7 +464,7 @@ elif pestana == "3: Inversiones":
                     idx_p = st.session_state.inventario.index[st.session_state.inventario["Código"] == prod_inv_new][0]
                     st.session_state.inventario.at[idx_p, "Última Fecha de Ingreso de Inversión"] = str(fecha_inv_new)
 
-                    st.success(f"Inversión registrada correctamente para el producto {prod_inv_new}.")
+                    st.success(f"Inversión registrada correctamente.")
                     st.rerun()
 
 # -----------------------------------------------------------------------------
@@ -457,14 +475,14 @@ elif pestana == "4: Ventas":
     st.caption("Registro de ventas y deducción de stock")
 
     st.markdown("### Historial de Ventas")
-    cols = st.columns([0.5, 1, 1.2, 1.5, 1.2, 1.2, 1, 1, 0.8, 0.8])
+    cols = st.columns([0.4, 0.8, 1.1, 1.4, 1.1, 1.1, 0.9, 0.8, 0.6, 0.6])
     headers = ["Sel.", "ID", "Fecha", "Cliente", "Pago", "Estado", "Prod.", "Cant.", "Editar", "Eliminar"]
     for c, h in zip(cols, headers):
-        c.markdown(f"**{h}**")
+        c.markdown(render_header(h), unsafe_allow_html=True)
     st.markdown("---")
 
     for idx, row in st.session_state.ventas.iterrows():
-        c0, c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([0.5, 1, 1.2, 1.5, 1.2, 1.2, 1, 1, 0.8, 0.8])
+        c0, c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([0.4, 0.8, 1.1, 1.4, 1.1, 1.1, 0.9, 0.8, 0.6, 0.6])
         
         vtid = row["ID Venta"]
         is_selected = vtid in st.session_state.selected_rows["ventas"]
@@ -483,28 +501,19 @@ elif pestana == "4: Ventas":
         pago_html = render_styled_text(row["Pago"], "pago")
         estado_html = render_styled_text(row["Estado"], "estado")
 
-        if is_selected:
-            c1.markdown(f'<div class="selected-row">{prefix}{vtid}</div>', unsafe_allow_html=True)
-            c2.markdown(f'<div class="selected-row">{row["Fecha de Venta"]}</div>', unsafe_allow_html=True)
-            c3.markdown(f'<div class="selected-row">{row["Cliente"]}</div>', unsafe_allow_html=True)
-            c4.markdown(f'<div class="selected-row">{pago_html}</div>', unsafe_allow_html=True)
-            c5.markdown(f'<div class="selected-row">{estado_html}</div>', unsafe_allow_html=True)
-            c6.markdown(f'<div class="selected-row">{row["Producto"]}</div>', unsafe_allow_html=True)
-            c7.markdown(f'<div class="selected-row">{row["Cantidad"]}</div>', unsafe_allow_html=True)
-        else:
-            c1.write(f"{prefix}{vtid}")
-            c2.write(str(row["Fecha de Venta"]))
-            c3.write(row["Cliente"])
-            c4.markdown(pago_html, unsafe_allow_html=True)
-            c5.markdown(estado_html, unsafe_allow_html=True)
-            c6.write(row["Producto"])
-            c7.write(row["Cantidad"])
+        c1.markdown(render_cell(f"{prefix}{vtid}", is_selected), unsafe_allow_html=True)
+        c2.markdown(render_cell(str(row["Fecha de Venta"]), is_selected), unsafe_allow_html=True)
+        c3.markdown(render_cell(row["Cliente"], is_selected), unsafe_allow_html=True)
+        c4.markdown(render_cell(pago_html, is_selected), unsafe_allow_html=True)
+        c5.markdown(render_cell(estado_html, is_selected), unsafe_allow_html=True)
+        c6.markdown(render_cell(row["Producto"], is_selected), unsafe_allow_html=True)
+        c7.markdown(render_cell(str(row["Cantidad"]), is_selected), unsafe_allow_html=True)
 
         if c8.button("✏️", key=f"edit_vta_{vtid}"):
             st.session_state.edit_target = {"tab": "ventas", "id": vtid}
             st.rerun()
 
-        if c9.button("🗑️", key=f"del_vta_{vtid}"):
+        if c9.button("🗑️️", key=f"del_vta_{vtid}"):
             st.session_state.ventas = st.session_state.ventas[st.session_state.ventas["ID Venta"] != vtid].reset_index(drop=True)
             if is_editing:
                 st.session_state.edit_target = {"tab": None, "id": None}
