@@ -12,53 +12,59 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilos CSS personalizados (Fuente Aptos Narrow 9px y ajuste de celdas)
+# Estilos CSS corregidos y ajustados
 st.markdown("""
     <style>
-    /* Fuente global Aptos Narrow / Arial Narrow 9px */
+    /* Fuente global Aptos Narrow / Arial Narrow a 13px para legibilidad adecuada */
     html, body, [class*="css"], div, span, p, label, input, button, select {
         font-family: 'Aptos Narrow', 'Arial Narrow', sans-serif !important;
-        font-size: 9px !important;
+        font-size: 13px !important;
+    }
+
+    /* Títulos e íconos de expansores ordenados */
+    .stExpander details summary p {
+        font-size: 14px !important;
+        font-weight: 600 !important;
     }
 
     /* Control de botones compactos */
     .stButton button {
-        padding: 1px 4px !important;
-        font-size: 9px !important;
-        height: 20px !important;
+        padding: 2px 6px !important;
+        font-size: 12px !important;
+        height: 26px !important;
         line-height: 1 !important;
         margin: 0px !important;
     }
 
-    /* Celdas fijas con ajuste perfecto para evitar desbordamiento y aumento de altura */
+    /* Contenedores de celda limpios con ajuste de texto y sin desbordamiento vertical */
     .cell-box {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        height: 22px;
-        line-height: 22px;
+        height: 28px;
+        line-height: 28px;
         padding: 0 4px;
         display: block;
-        font-size: 9px !important;
+        font-size: 13px !important;
     }
 
     .cell-box-header {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        height: 22px;
-        line-height: 22px;
+        height: 28px;
+        line-height: 28px;
         padding: 0 4px;
         font-weight: bold;
         display: block;
-        font-size: 9px !important;
+        font-size: 13px !important;
     }
 
     /* Fila seleccionada */
     .selected-row {
         background-color: #fff3cd !important;
         color: #856404 !important;
-        border-radius: 2px;
+        border-radius: 3px;
     }
 
     /* Colores para Ventas */
@@ -136,6 +142,7 @@ def get_stock_disponible(codigo_producto):
     return get_cantidad_total(codigo_producto) - get_cantidad_vendida(codigo_producto)
 
 def render_styled_text(val, tipo):
+    """Devuelve únicamente el HTML formateado sin duplicar el texto original"""
     if tipo == "pago":
         if val in ["Efectivo", "Transferencia"]:
             return f'<span class="text-verde">{val}</span>'
@@ -148,9 +155,9 @@ def render_styled_text(val, tipo):
             return f'<span class="text-rojo">{val}</span>'
     return val
 
-def render_cell(text, is_selected=False):
+def render_cell(html_content, is_selected=False):
     sel_class = " selected-row" if is_selected else ""
-    return f'<div class="cell-box{sel_class}" title="{text}">{text}</div>'
+    return f'<div class="cell-box{sel_class}">{html_content}</div>'
 
 def render_header(text):
     return f'<div class="cell-box-header" title="{text}">{text}</div>'
@@ -513,7 +520,7 @@ elif pestana == "4: Ventas":
             st.session_state.edit_target = {"tab": "ventas", "id": vtid}
             st.rerun()
 
-        if c9.button("🗑️️", key=f"del_vta_{vtid}"):
+        if c9.button("🗑", key=f"del_vta_{vtid}"):
             st.session_state.ventas = st.session_state.ventas[st.session_state.ventas["ID Venta"] != vtid].reset_index(drop=True)
             if is_editing:
                 st.session_state.edit_target = {"tab": None, "id": None}
