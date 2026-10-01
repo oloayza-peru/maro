@@ -1,567 +1,488 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import date
 
 # -----------------------------------------------------------------------------
-# CONFIGURACIÓN GENERAL DE LA APLICACIÓN
+# CONFIGURACIÓN INICIAL DE LA PÁGINA
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="MARO - Sistema de Gestión de Joyería",
+    page_title="MARO - Gestión de Joyería",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("💎 MARO - Sistema de Gestión de Joyería")
-st.caption("Panel interactivo con opciones de Edición (✏️) y Eliminación (🗑️) para control total de datos.")
+# Estilo personalizado para botones de acción compactos
+st.markdown("""
+    <style>
+    .stButton button {
+        padding: 2px 8px;
+        font-size: 14px;
+        margin: 0px;
+    }
+    .highlight-row {
+        background-color: #2b303c;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 15px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# INICIALIZACIÓN DE DATOS (st.session_state)
+# PERSISTENCIA DE DATOS (st.session_state)
 # -----------------------------------------------------------------------------
-
 if "inventario" not in st.session_state:
     st.session_state.inventario = pd.DataFrame([
-        {"Código": "JOY-001", "Nombre": "Collar de Oro Solitario", "Tipo": "Collar", "Cantidad": 10, "Última Fecha Ingreso": "2026-09-15"},
-        {"Código": "JOY-002", "Nombre": "Aretes Perla Cultivada", "Tipo": "Arete", "Cantidad": 15, "Última Fecha Ingreso": "2026-09-20"},
-        {"Código": "JOY-003", "Nombre": "Pulsera Plata 925", "Tipo": "Pulsera", "Cantidad": 8, "Última Fecha Ingreso": "2026-09-25"},
-        {"Código": "JOY-004", "Nombre": "Aro de Matrimonio 18K", "Tipo": "Aro", "Cantidad": 5, "Última Fecha Ingreso": "2026-09-28"}
+        {"Código": "COL-001", "Tipo": "Collar", "Stock": 12, "Última Fecha de Ingreso de Inversión": "2026-09-15"},
+        {"Código": "ART-002", "Tipo": "Arete", "Stock": 25, "Última Fecha de Ingreso de Inversión": "2026-09-20"},
+        {"Código": "PUL-003", "Tipo": "Pulsera", "Stock": 18, "Última Fecha de Ingreso de Inversión": "2026-09-22"},
+        {"Código": "ARO-004", "Tipo": "Aro", "Stock": 30, "Última Fecha de Ingreso de Inversión": "2026-09-25"},
     ])
 
 if "clientes" not in st.session_state:
     st.session_state.clientes = pd.DataFrame([
-        {"ID Cliente": "CLI-001", "Nombre": "María", "Apellido": "García", "Celular": "987654321"},
-        {"ID Cliente": "CLI-002", "Nombre": "Carlos", "Apellido": "Pérez", "Celular": "912345678"}
+        {"ID": 1, "Nombre": "María", "Apellido": "García", "Celular": "987654321"},
+        {"ID": 2, "Nombre": "Carlos", "Apellido": "Mendoza", "Celular": "912345678"},
     ])
 
 if "inversiones" not in st.session_state:
     st.session_state.inversiones = pd.DataFrame([
-        {"ID Inversión": "INV-001", "Fecha de Inversión": "2026-09-15", "Monto de Inversión ($)": 500.0, "Producto Invertido": "JOY-001", "Cantidad Ingresada": 10}
+        {"ID Inversión": "INV-101", "Fecha de Inversión": "2026-09-15", "Monto de Inversión ($)": 450.0, "Producto": "COL-001", "Cantidad Ingresada": 12},
+        {"ID Inversión": "INV-102", "Fecha de Inversión": "2026-09-20", "Monto de Inversión ($)": 300.0, "Producto": "ART-002", "Cantidad Ingresada": 25},
     ])
 
 if "ventas" not in st.session_state:
     st.session_state.ventas = pd.DataFrame([
-        {"ID Venta": "V-001", "Fecha de Venta": "2026-09-29", "Cliente": "María García", "Producto": "JOY-001", "Cantidad": 1, "Pago": "Efectivo", "Estado": "Finalizado"}
+        {"ID Venta": "V-501", "Fecha de Venta": "2026-09-28", "Cliente": "María García", "Pago": "Efectivo", "Estado": "Finalizado", "Producto": "COL-001", "Cantidad": 2, "Monto ($)": 180.0},
+        {"ID Venta": "V-502", "Fecha de Venta": "2026-09-29", "Cliente": "Carlos Mendoza", "Pago": "Transferencia", "Estado": "Pendiente", "Producto": "ART-002", "Cantidad": 1, "Monto ($)": 45.0},
     ])
 
-# Estado para controlar la edición actual
-if "edit_state" not in st.session_state:
-    st.session_state.edit_state = {"tab": None, "id": None}
+# Estado para controlar filas en edición
+if "edit_target" not in st.session_state:
+    st.session_state.edit_target = {"tab": None, "id": None}
 
 # -----------------------------------------------------------------------------
-# PESTAÑAS PRINCIPALES
+# BARRA LATERAL (NAVEGACIÓN)
 # -----------------------------------------------------------------------------
-tab_inv, tab_cli, tab_inv_monto, tab_vta = st.tabs([
-    "1️⃣ Inventario", 
-    "2️⃣ Clientes", 
-    "3️⃣ Inversiones", 
-    "4️⃣ Ventas"
-])
+st.sidebar.title("💎 MARO")
+st.sidebar.caption("Sistema Integrado de Gestión")
 
-# =============================================================================
+pestana = st.sidebar.radio(
+    "Navegar a:",
+    ["1: Inventario", "2: Clientes", "3: Inversiones", "4: Ventas"]
+)
+
+# -----------------------------------------------------------------------------
 # PESTAÑA 1: INVENTARIO
-# =============================================================================
-with tab_inv:
-    st.header("📦 Control de Inventario")
-    st.caption("Listado de productos con opciones para eliminar (🗑️) o editar (✏️).")
+# -----------------------------------------------------------------------------
+if pestana == "1: Inventario":
+    st.title("📦 1: Inventario")
+    st.caption("Control de stock por tipo de producto (Collar, Arete, Pulsera, Aro)")
 
-    if not st.session_state.inventario.empty:
-        # Renderizado fila por fila con botones de acción a la izquierda
-        header_cols = st.columns([0.6, 0.6, 1.2, 2, 1.2, 1, 1.5])
-        header_cols[0].write("**🗑️**")
-        header_cols[1].write("**✏️**")
-        header_cols[2].write("**Código**")
-        header_cols[3].write("**Nombre**")
-        header_cols[4].write("**Tipo**")
-        header_cols[5].write("**Cantidad**")
-        header_cols[6].write("**Última Fecha Ingreso**")
-        st.divider()
-
-        for idx, row in st.session_state.inventario.iterrows():
-            c_del, c_edit, c_code, c_name, c_type, c_qty, c_date = st.columns([0.6, 0.6, 1.2, 2, 1.2, 1, 1.5])
-            
-            # Botón Eliminar
-            if c_del.button("🗑️", key=f"del_inv_{idx}"):
-                st.session_state.inventario = st.session_state.inventario.drop(idx).reset_index(drop=True)
-                st.success("Producto eliminado del inventario.")
-                st.rerun()
-            
-            # Botón Editar
-            if c_edit.button("✏️", key=f"edit_inv_{idx}"):
-                st.session_state.edit_state = {"tab": "inventario", "id": idx}
-                st.rerun()
-
-            c_code.write(row["Código"])
-            c_name.write(row["Nombre"])
-            c_type.write(row["Tipo"])
-            c_qty.write(row["Cantidad"])
-            c_date.write(str(row["Última Fecha Ingreso"]))
-
-    else:
-        st.info("El inventario está vacío.")
-
+    # Tabla con botones al final de cada fila
+    st.markdown("### Listado de Inventario")
+    cols = st.columns([1.5, 1.5, 1.2, 2.5, 0.8, 0.8])
+    headers = ["Código", "Tipo", "Stock", "Última Fecha Ingreso", "Editar", "Eliminar"]
+    for c, h in zip(cols, headers):
+        c.markdown(f"**{h}**")
     st.markdown("---")
 
-    # Formulario de edición si se seleccionó un producto
-    if st.session_state.edit_state["tab"] == "inventario":
-        e_idx = st.session_state.edit_state["id"]
-        if e_idx in st.session_state.inventario.index:
-            curr_row = st.session_state.inventario.loc[e_idx]
-            st.subheader(f"✏️ Editar Producto: {curr_row['Código']}")
+    for idx, row in st.session_state.inventario.iterrows():
+        c1, c2, c3, c4, c5, c6 = st.columns([1.5, 1.5, 1.2, 2.5, 0.8, 0.8])
+        
+        is_editing = (st.session_state.edit_target["tab"] == "inventario" and st.session_state.edit_target["id"] == row["Código"])
+        prefix = "👉 " if is_editing else ""
+
+        c1.write(f"{prefix}{row['Código']}")
+        c2.write(row["Tipo"])
+        c3.write(row["Stock"])
+        c4.write(str(row["Última Fecha de Ingreso de Inversión"]))
+        
+        if c5.button("✏️", key=f"edit_inv_{row['Código']}"):
+            st.session_state.edit_target = {"tab": "inventario", "id": row["Código"]}
+            st.rerun()
+
+        if c6.button("🗑️", key=f"del_inv_{row['Código']}"):
+            st.session_state.inventario = st.session_state.inventario[st.session_state.inventario["Código"] != row["Código"]].reset_index(drop=True)
+            if is_editing:
+                st.session_state.edit_target = {"tab": None, "id": None}
+            st.success(f"Producto {row['Código']} eliminado.")
+            st.rerun()
+
+    # Formulario desplegable para EDITAR
+    if st.session_state.edit_target["tab"] == "inventario":
+        st.markdown("---")
+        target_id = st.session_state.edit_target["id"]
+        row_data = st.session_state.inventario[st.session_state.inventario["Código"] == target_id].iloc[0]
+
+        with st.expander(f"✏️ Editando Registro: {target_id}", expanded=True):
             with st.form("form_edit_inv"):
-                col1, col2, col3 = st.columns(3)
-                e_code = col1.text_input("Código", value=curr_row["Código"])
-                e_name = col2.text_input("Nombre", value=curr_row["Nombre"])
-                
-                tipos = ["Collar", "Arete", "Pulsera", "Aro", "Otro"]
-                t_idx = tipos.index(curr_row["Tipo"]) if curr_row["Tipo"] in tipos else 0
-                e_type = col3.selectbox("Tipo de Joya", tipos, index=t_idx)
-
-                col4, col5 = st.columns(2)
-                e_qty = col4.number_input("Cantidad", min_value=0, value=int(curr_row["Cantidad"]))
-                
-                try:
-                    f_val = datetime.strptime(str(curr_row["Última Fecha Ingreso"]), "%Y-%m-%d")
-                except:
-                    f_val = datetime.now()
-                e_date = col5.date_input("Última Fecha Ingreso", value=f_val)
+                col_e1, col_e2, col_e3 = st.columns(3)
+                tipo_edit = col_e1.selectbox("Tipo", ["Collar", "Arete", "Pulsera", "Aro"], index=["Collar", "Arete", "Pulsera", "Aro"].index(row_data["Tipo"]) if row_data["Tipo"] in ["Collar", "Arete", "Pulsera", "Aro"] else 0)
+                stock_edit = col_e2.number_input("Stock Actual", min_value=0, value=int(row_data["Stock"]))
+                fecha_edit = col_e3.date_input("Última Fecha de Ingreso", value=pd.to_datetime(row_data["Última Fecha de Ingreso de Inversión"]).date())
 
                 btn_save = st.form_submit_button("💾 Guardar Cambios")
-                btn_cancel = st.form_submit_button("❌ Cancelar")
-
                 if btn_save:
-                    st.session_state.inventario.at[e_idx, "Código"] = e_code
-                    st.session_state.inventario.at[e_idx, "Nombre"] = e_name
-                    st.session_state.inventario.at[e_idx, "Tipo"] = e_type
-                    st.session_state.inventario.at[e_idx, "Cantidad"] = e_qty
-                    st.session_state.inventario.at[e_idx, "Última Fecha Ingreso"] = str(e_date)
-                    st.session_state.edit_state = {"tab": None, "id": None}
-                    st.success("Producto actualizado correctamente.")
+                    idx_target = st.session_state.inventario.index[st.session_state.inventario["Código"] == target_id][0]
+                    st.session_state.inventario.at[idx_target, "Tipo"] = tipo_edit
+                    st.session_state.inventario.at[idx_target, "Stock"] = stock_edit
+                    st.session_state.inventario.at[idx_target, "Última Fecha de Ingreso de Inversión"] = str(fecha_edit)
+                    st.session_state.edit_target = {"tab": None, "id": None}
+                    st.success("¡Registro de inventario actualizado correctamente!")
                     st.rerun()
 
-                if btn_cancel:
-                    st.session_state.edit_state = {"tab": None, "id": None}
-                    st.rerun()
+    # Formulario para AÑADIR NUEVO
+    st.markdown("---")
+    with st.expander("➕ Añadir Nuevo Producto al Inventario"):
+        with st.form("form_add_inv", clear_on_submit=True):
+            col_a1, col_a2, col_a3, col_a4 = st.columns(4)
+            cod_new = col_a1.text_input("Código de Producto (ej. COL-005)")
+            tipo_new = col_a2.selectbox("Tipo de Producto", ["Collar", "Arete", "Pulsera", "Aro"])
+            stock_new = col_a3.number_input("Stock Inicial", min_value=0, value=1)
+            fecha_new = col_a4.date_input("Fecha de Ingreso", value=date.today())
 
-    # Formulario para añadir nuevo producto
-    with st.expander("➕ Codificar Nuevo Producto en Catálogo"):
-        with st.form("form_inventario", clear_on_submit=True):
-            c1, c2, c3 = st.columns(3)
-            codigo = c1.text_input("Código/SKU", value=f"JOY-00{len(st.session_state.inventario)+1}")
-            nombre = c2.text_input("Nombre / Descripción de la Joya")
-            tipo = c3.selectbox("Tipo de Joya", ["Collar", "Arete", "Pulsera", "Aro", "Otro"])
-            
-            c4, c5 = st.columns(2)
-            cantidad = c4.number_input("Cantidad Inicial", min_value=0, value=0, step=1)
-            fecha_ingreso = c5.date_input("Última Fecha de Ingreso", value=datetime.now())
-
-            btn_inv = st.form_submit_button("Guardar Producto")
-
-            if btn_inv:
-                if not nombre:
-                    st.error("Ingrese el nombre de la joya.")
+            btn_add = st.form_submit_button("➕ Registrar Producto")
+            if btn_add:
+                if not cod_new:
+                    st.error("Ingresa un código válido.")
+                elif cod_new in st.session_state.inventario["Código"].values:
+                    st.error("Este código de producto ya existe.")
                 else:
-                    nuevo_item = pd.DataFrame([{
-                        "Código": codigo,
-                        "Nombre": nombre,
-                        "Tipo": tipo,
-                        "Cantidad": cantidad,
-                        "Última Fecha Ingreso": str(fecha_ingreso)
+                    new_item = pd.DataFrame([{
+                        "Código": cod_new,
+                        "Tipo": tipo_new,
+                        "Stock": stock_new,
+                        "Última Fecha de Ingreso de Inversión": str(fecha_new)
                     }])
-                    st.session_state.inventario = pd.concat([st.session_state.inventario, nuevo_item], ignore_index=True)
-                    st.success(f"Producto '{nombre}' codificado con éxito.")
+                    st.session_state.inventario = pd.concat([st.session_state.inventario, new_item], ignore_index=True)
+                    st.success("Producto registrado exitosamente.")
                     st.rerun()
 
-# =============================================================================
+# -----------------------------------------------------------------------------
 # PESTAÑA 2: CLIENTES
-# =============================================================================
-with tab_cli:
-    st.header("👥 Directorio de Clientes")
-    st.caption("Opciones directas para modificar (✏️) o eliminar (🗑️) datos de clientes.")
+# -----------------------------------------------------------------------------
+elif pestana == "2: Clientes":
+    st.title("👤 2: Clientes")
+    st.caption("Directorio de clientes de MARO")
 
-    if not st.session_state.clientes.empty:
-        header_cols = st.columns([0.6, 0.6, 1.5, 2, 2, 2])
-        header_cols[0].write("**🗑️**")
-        header_cols[1].write("**✏️**")
-        header_cols[2].write("**ID Cliente**")
-        header_cols[3].write("**Nombre**")
-        header_cols[4].write("**Apellido**")
-        header_cols[5].write("**Celular**")
-        st.divider()
-
-        for idx, row in st.session_state.clientes.iterrows():
-            c_del, c_edit, c_id, c_nom, c_ape, c_cel = st.columns([0.6, 0.6, 1.5, 2, 2, 2])
-            
-            if c_del.button("🗑️", key=f"del_cli_{idx}"):
-                st.session_state.clientes = st.session_state.clientes.drop(idx).reset_index(drop=True)
-                st.success("Cliente eliminado.")
-                st.rerun()
-
-            if c_edit.button("✏️", key=f"edit_cli_{idx}"):
-                st.session_state.edit_state = {"tab": "clientes", "id": idx}
-                st.rerun()
-
-            c_id.write(row["ID Cliente"])
-            c_nom.write(row["Nombre"])
-            c_ape.write(row["Apellido"])
-            c_cel.write(str(row["Celular"]))
-    else:
-        st.info("No hay clientes registrados.")
-
+    st.markdown("### Registro de Clientes")
+    cols = st.columns([1, 2, 2, 2, 0.8, 0.8])
+    headers = ["ID", "Nombre", "Apellido", "Celular", "Editar", "Eliminar"]
+    for c, h in zip(cols, headers):
+        c.markdown(f"**{h}**")
     st.markdown("---")
 
-    # Formulario de edición de cliente
-    if st.session_state.edit_state["tab"] == "clientes":
-        e_idx = st.session_state.edit_state["id"]
-        if e_idx in st.session_state.clientes.index:
-            curr_row = st.session_state.clientes.loc[e_idx]
-            st.subheader(f"✏️ Editar Cliente: {curr_row['ID Cliente']}")
+    for idx, row in st.session_state.clientes.iterrows():
+        c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 2, 2, 0.8, 0.8])
+        
+        is_editing = (st.session_state.edit_target["tab"] == "clientes" and st.session_state.edit_target["id"] == row["ID"])
+        prefix = "👉 " if is_editing else ""
+
+        c1.write(f"{prefix}{row['ID']}")
+        c2.write(row["Nombre"])
+        c3.write(row["Apellido"])
+        c4.write(row["Celular"])
+
+        if c5.button("✏️", key=f"edit_cli_{row['ID']}"):
+            st.session_state.edit_target = {"tab": "clientes", "id": row["ID"]}
+            st.rerun()
+
+        if c6.button("🗑️", key=f"del_cli_{row['ID']}"):
+            st.session_state.clientes = st.session_state.clientes[st.session_state.clientes["ID"] != row["ID"]].reset_index(drop=True)
+            if is_editing:
+                st.session_state.edit_target = {"tab": None, "id": None}
+            st.success(f"Cliente {row['Nombre']} {row['Apellido']} eliminado.")
+            st.rerun()
+
+    # Formulario desplegable para EDITAR
+    if st.session_state.edit_target["tab"] == "clientes":
+        st.markdown("---")
+        target_id = st.session_state.edit_target["id"]
+        row_data = st.session_state.clientes[st.session_state.clientes["ID"] == target_id].iloc[0]
+
+        with st.expander(f"✏️ Editando Cliente ID: {target_id}", expanded=True):
             with st.form("form_edit_cli"):
-                col1, col2, col3 = st.columns(3)
-                e_nom = col1.text_input("Nombre", value=curr_row["Nombre"])
-                e_ape = col2.text_input("Apellido", value=curr_row["Apellido"])
-                e_cel = col3.text_input("Celular", value=str(curr_row["Celular"]))
+                col_e1, col_e2, col_e3 = st.columns(3)
+                nom_edit = col_e1.text_input("Nombre", value=row_data["Nombre"])
+                ape_edit = col_e2.text_input("Apellido", value=row_data["Apellido"])
+                cel_edit = col_e3.text_input("Celular", value=row_data["Celular"])
 
                 btn_save = st.form_submit_button("💾 Guardar Cambios")
-                btn_cancel = st.form_submit_button("❌ Cancelar")
-
                 if btn_save:
-                    st.session_state.clientes.at[e_idx, "Nombre"] = e_nom
-                    st.session_state.clientes.at[e_idx, "Apellido"] = e_ape
-                    st.session_state.clientes.at[e_idx, "Celular"] = e_cel
-                    st.session_state.edit_state = {"tab": None, "id": None}
-                    st.success("Datos del cliente actualizados.")
+                    idx_target = st.session_state.clientes.index[st.session_state.clientes["ID"] == target_id][0]
+                    st.session_state.clientes.at[idx_target, "Nombre"] = nom_edit
+                    st.session_state.clientes.at[idx_target, "Apellido"] = ape_edit
+                    st.session_state.clientes.at[idx_target, "Celular"] = cel_edit
+                    st.session_state.edit_target = {"tab": None, "id": None}
+                    st.success("¡Datos del cliente actualizados!")
                     st.rerun()
 
-                if btn_cancel:
-                    st.session_state.edit_state = {"tab": None, "id": None}
+    # Formulario para AÑADIR NUEVO
+    st.markdown("---")
+    with st.expander("➕ Añadir Nuevo Cliente"):
+        with st.form("form_add_cli", clear_on_submit=True):
+            col_a1, col_a2, col_a3 = st.columns(3)
+            nom_new = col_a1.text_input("Nombre")
+            ape_new = col_a2.text_input("Apellido")
+            cel_new = col_a3.text_input("Celular")
+
+            btn_add = st.form_submit_button("➕ Registrar Cliente")
+            if btn_add:
+                if not nom_new or not ape_new:
+                    st.error("Por favor ingresa nombre y apellido.")
+                else:
+                    new_id = int(st.session_state.clientes["ID"].max() + 1) if not st.session_state.clientes.empty else 1
+                    new_cli = pd.DataFrame([{
+                        "ID": new_id,
+                        "Nombre": nom_new,
+                        "Apellido": ape_new,
+                        "Celular": cel_new
+                    }])
+                    st.session_state.clientes = pd.concat([st.session_state.clientes, new_cli], ignore_index=True)
+                    st.success("Cliente agregado exitosamente.")
                     st.rerun()
 
-    # Agregar cliente
-    st.subheader("➕ Registrar Nuevo Cliente")
-    with st.form("form_cliente", clear_on_submit=True):
-        col_c1, col_c2, col_c3 = st.columns(3)
-        nom_cli = col_c1.text_input("Nombre")
-        ape_cli = col_c2.text_input("Apellido")
-        cel_cli = col_c3.text_input("Celular")
-
-        btn_cli = st.form_submit_button("Registrar Cliente")
-
-        if btn_cli:
-            if not nom_cli or not ape_cli:
-                st.error("Por favor complete Nombre y Apellido.")
-            else:
-                nuevo_cli = pd.DataFrame([{
-                    "ID Cliente": f"CLI-00{len(st.session_state.clientes)+1}",
-                    "Nombre": nom_cli,
-                    "Apellido": ape_cli,
-                    "Celular": cel_cli
-                }])
-                st.session_state.clientes = pd.concat([st.session_state.clientes, nuevo_cli], ignore_index=True)
-                st.success(f"Cliente {nom_cli} {ape_cli} guardado exitosamente.")
-                st.rerun()
-
-# =============================================================================
+# -----------------------------------------------------------------------------
 # PESTAÑA 3: INVERSIONES
-# =============================================================================
-with tab_inv_monto:
-    st.header("📉 Registro de Inversiones")
-    st.caption("Al eliminar o modificar inversiones, el stock del producto asociado se reajusta automáticamente.")
+# -----------------------------------------------------------------------------
+elif pestana == "3: Inversiones":
+    st.title("💼 3: Inversiones")
+    st.caption("Registro de gastos en mercadería que incrementan el stock automáticamente")
 
-    if not st.session_state.inversiones.empty:
-        header_cols = st.columns([0.6, 0.6, 1.2, 1.5, 1.5, 1.8, 1.2])
-        header_cols[0].write("**🗑️**")
-        header_cols[1].write("**✏️**")
-        header_cols[2].write("**ID Inv.**")
-        header_cols[3].write("**Fecha**")
-        header_cols[4].write("**Monto ($)**")
-        header_cols[5].write("**Producto**")
-        header_cols[6].write("**Cant. Ingresada**")
-        st.divider()
+    st.markdown("### Historial de Inversiones")
+    cols = st.columns([1.2, 1.5, 1.5, 1.5, 1.2, 0.8, 0.8])
+    headers = ["ID Inversión", "Fecha", "Monto ($)", "Producto", "Cant. Ingresada", "Editar", "Eliminar"]
+    for c, h in zip(cols, headers):
+        c.markdown(f"**{h}**")
+    st.markdown("---")
 
-        for idx, row in st.session_state.inversiones.iterrows():
-            c_del, c_edit, c_id, c_date, c_amount, c_prod, c_qty = st.columns([0.6, 0.6, 1.2, 1.5, 1.5, 1.8, 1.2])
+    for idx, row in st.session_state.inversiones.iterrows():
+        c1, c2, c3, c4, c5, c6, c7 = st.columns([1.2, 1.5, 1.5, 1.5, 1.2, 0.8, 0.8])
+        
+        is_editing = (st.session_state.edit_target["tab"] == "inversiones" and st.session_state.edit_target["id"] == row["ID Inversión"])
+        prefix = "👉 " if is_editing else ""
 
-            # Eliminar Inversión
-            if c_del.button("🗑️", key=f"del_invm_{idx}"):
-                p_code = row["Producto Invertido"]
-                qty = row["Cantidad Ingresada"]
-                
-                # Descontar stock previamente sumado
+        c1.write(f"{prefix}{row['ID Inversión']}")
+        c2.write(str(row["Fecha de Inversión"]))
+        c3.write(f"${row['Monto de Inversión ($)']:.2f}")
+        c4.write(row["Producto"])
+        c5.write(row["Cantidad Ingresada"])
+
+        if c6.button("✏️", key=f"edit_inv_item_{row['ID Inversión']}"):
+            st.session_state.edit_target = {"tab": "inversiones", "id": row["ID Inversión"]}
+            st.rerun()
+
+        if c7.button("🗑️", key=f"del_inv_item_{row['ID Inversión']}"):
+            # Revertir stock
+            p_code = row["Producto"]
+            cant = row["Cantidad Ingresada"]
+            idx_inv = st.session_state.inventario.index[st.session_state.inventario["Código"] == p_code].tolist()
+            if idx_inv:
+                st.session_state.inventario.at[idx_inv[0], "Stock"] = max(0, st.session_state.inventario.at[idx_inv[0], "Stock"] - cant)
+
+            st.session_state.inversiones = st.session_state.inversiones[st.session_state.inversiones["ID Inversión"] != row["ID Inversión"]].reset_index(drop=True)
+            if is_editing:
+                st.session_state.edit_target = {"tab": None, "id": None}
+            st.success(f"Inversión {row['ID Inversión']} eliminada y stock descontado.")
+            st.rerun()
+
+    # Formulario desplegable para EDITAR
+    if st.session_state.edit_target["tab"] == "inversiones":
+        st.markdown("---")
+        target_id = st.session_state.edit_target["id"]
+        row_data = st.session_state.inversiones[st.session_state.inversiones["ID Inversión"] == target_id].iloc[0]
+
+        with st.expander(f"✏️ Editando Inversión: {target_id}", expanded=True):
+            with st.form("form_edit_inversion"):
+                col_e1, col_e2, col_e3 = st.columns(3)
+                fecha_edit = col_e1.date_input("Fecha de Inversión", value=pd.to_datetime(row_data["Fecha de Inversión"]).date())
+                monto_edit = col_e2.number_input("Monto ($)", min_value=0.0, value=float(row_data["Monto de Inversión ($)"]))
+                cant_edit = col_e3.number_input("Cantidad Ingresada", min_value=1, value=int(row_data["Cantidad Ingresada"]))
+
+                btn_save = st.form_submit_button("💾 Guardar Cambios")
+                if btn_save:
+                    # Ajustar diferencia en inventario
+                    diff = cant_edit - int(row_data["Cantidad Ingresada"])
+                    p_code = row_data["Producto"]
+                    idx_inv = st.session_state.inventario.index[st.session_state.inventario["Código"] == p_code].tolist()
+                    if idx_inv:
+                        st.session_state.inventario.at[idx_inv[0], "Stock"] += diff
+                        st.session_state.inventario.at[idx_inv[0], "Última Fecha de Ingreso de Inversión"] = str(fecha_edit)
+
+                    idx_target = st.session_state.inversiones.index[st.session_state.inversiones["ID Inversión"] == target_id][0]
+                    st.session_state.inversiones.at[idx_target, "Fecha de Inversión"] = str(fecha_edit)
+                    st.session_state.inversiones.at[idx_target, "Monto de Inversión ($)"] = monto_edit
+                    st.session_state.inversiones.at[idx_target, "Cantidad Ingresada"] = cant_edit
+
+                    st.session_state.edit_target = {"tab": None, "id": None}
+                    st.success("¡Inversión e inventario actualizados con éxito!")
+                    st.rerun()
+
+    # Formulario para AÑADIR NUEVA INVERSIÓN
+    st.markdown("---")
+    with st.expander("➕ Registrar Nueva Inversión"):
+        if st.session_state.inventario.empty:
+            st.warning("Debes agregar productos en la pestaña '1: Inventario' primero.")
+        else:
+            with st.form("form_add_inversion", clear_on_submit=True):
+                col_a1, col_a2, col_a3, col_a4 = st.columns(4)
+                fecha_inv_new = col_a1.date_input("Fecha", value=date.today())
+                monto_inv_new = col_a2.number_input("Monto Inversión ($)", min_value=0.0, value=100.0)
+                prod_inv_new = col_a3.selectbox("Producto de Inversión", st.session_state.inventario["Código"].tolist())
+                cant_inv_new = col_a4.number_input("Cantidad Comprada", min_value=1, value=5)
+
+                btn_add_inv = st.form_submit_button("💾 Registrar e Incrementar Stock")
+                if btn_add_inv:
+                    new_id = f"INV-10{len(st.session_state.inversiones)+1}"
+                    new_rec = pd.DataFrame([{
+                        "ID Inversión": new_id,
+                        "Fecha de Inversión": str(fecha_inv_new),
+                        "Monto de Inversión ($)": monto_inv_new,
+                        "Producto": prod_inv_new,
+                        "Cantidad Ingresada": cant_inv_new
+                    }])
+                    st.session_state.inversiones = pd.concat([st.session_state.inversiones, new_rec], ignore_index=True)
+
+                    # Incrementar stock y actualizar fecha
+                    idx_p = st.session_state.inventario.index[st.session_state.inventario["Código"] == prod_inv_new][0]
+                    st.session_state.inventario.at[idx_p, "Stock"] += cant_inv_new
+                    st.session_state.inventario.at[idx_p, "Última Fecha de Ingreso de Inversión"] = str(fecha_inv_new)
+
+                    st.success(f"Inversión registrada. Se agregaron {cant_inv_new} unidades al producto {prod_inv_new}.")
+                    st.rerun()
+
+# -----------------------------------------------------------------------------
+# PESTAÑA 4: VENTAS
+# -----------------------------------------------------------------------------
+elif pestana == "4: Ventas":
+    st.title("🛒 4: Ventas")
+    st.caption("Registro de ventas, cliente asociado, método de pago y estado")
+
+    st.markdown("### Historial de Ventas")
+    cols = st.columns([1, 1.2, 1.5, 1.2, 1.2, 1, 1, 0.8, 0.8])
+    headers = ["ID", "Fecha", "Cliente", "Pago", "Estado", "Prod.", "Cant.", "Editar", "Eliminar"]
+    for c, h in zip(cols, headers):
+        c.markdown(f"**{h}**")
+    st.markdown("---")
+
+    for idx, row in st.session_state.ventas.iterrows():
+        c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([1, 1.2, 1.5, 1.2, 1.2, 1, 1, 0.8, 0.8])
+        
+        is_editing = (st.session_state.edit_target["tab"] == "ventas" and st.session_state.edit_target["id"] == row["ID Venta"])
+        prefix = "👉 " if is_editing else ""
+
+        c1.write(f"{prefix}{row['ID Venta']}")
+        c2.write(str(row["Fecha de Venta"]))
+        c3.write(row["Cliente"])
+        c4.write(row["Pago"])
+        c5.write(row["Estado"])
+        c6.write(row["Producto"])
+        c7.write(row["Cantidad"])
+
+        if c8.button("✏️", key=f"edit_vta_{row['ID Venta']}"):
+            st.session_state.edit_target = {"tab": "ventas", "id": row["ID Venta"]}
+            st.rerun()
+
+        if c9.button("🗑️", key=f"del_vta_{row['ID Venta']}"):
+            # Revertir stock si estaba finalizada
+            if row["Estado"] == "Finalizado":
+                p_code = row["Producto"]
+                cant = row["Cantidad"]
                 idx_inv = st.session_state.inventario.index[st.session_state.inventario["Código"] == p_code].tolist()
                 if idx_inv:
-                    st.session_state.inventario.at[idx_inv[0], "Cantidad"] = max(0, st.session_state.inventario.at[idx_inv[0], "Cantidad"] - qty)
+                    st.session_state.inventario.at[idx_inv[0], "Stock"] += cant
 
-                st.session_state.inversiones = st.session_state.inversiones.drop(idx).reset_index(drop=True)
-                st.success("Inversión eliminada y stock reajustado.")
-                st.rerun()
+            st.session_state.ventas = st.session_state.ventas[st.session_state.ventas["ID Venta"] != row["ID Venta"]].reset_index(drop=True)
+            if is_editing:
+                st.session_state.edit_target = {"tab": None, "id": None}
+            st.success(f"Venta {row['ID Venta']} eliminada.")
+            st.rerun()
 
-            # Editar Inversión
-            if c_edit.button("✏️", key=f"edit_invm_{idx}"):
-                st.session_state.edit_state = {"tab": "inversiones", "id": idx}
-                st.rerun()
+    # Formulario desplegable para EDITAR
+    if st.session_state.edit_target["tab"] == "ventas":
+        st.markdown("---")
+        target_id = st.session_state.edit_target["id"]
+        row_data = st.session_state.ventas[st.session_state.ventas["ID Venta"] == target_id].iloc[0]
 
-            c_id.write(row["ID Inversión"])
-            c_date.write(str(row["Fecha de Inversión"]))
-            c_amount.write(f"${row['Monto de Inversión ($)']:.2f}")
-            c_prod.write(row["Producto Invertido"])
-            c_qty.write(row["Cantidad Ingresada"])
-    else:
-        st.info("No hay inversiones registradas.")
-
-    st.markdown("---")
-
-    # Formulario de edición de Inversión
-    if st.session_state.edit_state["tab"] == "inversiones":
-        e_idx = st.session_state.edit_state["id"]
-        if e_idx in st.session_state.inversiones.index:
-            curr_row = st.session_state.inversiones.loc[e_idx]
-            st.subheader(f"✏️ Editar Inversión: {curr_row['ID Inversión']}")
-            with st.form("form_edit_inversion"):
-                col1, col2 = st.columns(2)
-                try:
-                    f_val = datetime.strptime(str(curr_row["Fecha de Inversión"]), "%Y-%m-%d")
-                except:
-                    f_val = datetime.now()
-                e_date = col1.date_input("Fecha de Inversión", value=f_val)
-                e_monto = col2.number_input("Monto de Inversión ($)", min_value=0.1, value=float(curr_row["Monto de Inversión ($)"]))
-
-                col3, col4 = st.columns(2)
-                opciones_p = st.session_state.inventario["Código"].tolist()
-                p_idx = opciones_p.index(curr_row["Producto Invertido"]) if curr_row["Producto Invertido"] in opciones_p else 0
-                e_prod = col3.selectbox("Producto Invertido", opciones_p, index=p_idx)
-                e_qty = col4.number_input("Cantidad Ingresada", min_value=1, value=int(curr_row["Cantidad Ingresada"]))
-
-                btn_save = st.form_submit_button("💾 Guardar Cambios")
-                btn_cancel = st.form_submit_button("❌ Cancelar")
-
-                if btn_save:
-                    # Ajustar diferencia de stock
-                    old_prod = curr_row["Producto Invertido"]
-                    old_qty = curr_row["Cantidad Ingresada"]
-
-                    # Revertir previo
-                    idx_old = st.session_state.inventario.index[st.session_state.inventario["Código"] == old_prod].tolist()
-                    if idx_old:
-                        st.session_state.inventario.at[idx_old[0], "Cantidad"] = max(0, st.session_state.inventario.at[idx_old[0], "Cantidad"] - old_qty)
-
-                    # Aplicar nuevo
-                    idx_new = st.session_state.inventario.index[st.session_state.inventario["Código"] == e_prod].tolist()
-                    if idx_new:
-                        st.session_state.inventario.at[idx_new[0], "Cantidad"] += e_qty
-                        st.session_state.inventario.at[idx_new[0], "Última Fecha Ingreso"] = str(e_date)
-
-                    st.session_state.inversiones.at[e_idx, "Fecha de Inversión"] = str(e_date)
-                    st.session_state.inversiones.at[e_idx, "Monto de Inversión ($)"] = e_monto
-                    st.session_state.inversiones.at[e_idx, "Producto Invertido"] = e_prod
-                    st.session_state.inversiones.at[e_idx, "Cantidad Ingresada"] = e_qty
-
-                    st.session_state.edit_state = {"tab": None, "id": None}
-                    st.success("Inversión y stock actualizados correctamente.")
-                    st.rerun()
-
-                if btn_cancel:
-                    st.session_state.edit_state = {"tab": None, "id": None}
-                    st.rerun()
-
-    # Añadir nueva inversión
-    st.subheader("➕ Añadir Nueva Inversión")
-    if st.session_state.inventario.empty:
-        st.warning("Primero debes codificar productos en la pestaña '1. Inventario'.")
-    else:
-        with st.form("form_inversion", clear_on_submit=True):
-            col_i1, col_i2 = st.columns(2)
-            fecha_inv = col_i1.date_input("Fecha de Inversión", value=datetime.now())
-            monto_inv = col_i2.number_input("Monto de Inversión ($)", min_value=0.1, value=100.0, step=10.0)
-
-            col_i3, col_i4 = st.columns(2)
-            opciones_prod = st.session_state.inventario["Código"].tolist()
-            prod_sel = col_i3.selectbox("Producto(s) de Inversión (Código)", opciones_prod)
-            cant_inv = col_i4.number_input("Cantidad Adquirida", min_value=1, value=1, step=1)
-
-            btn_registrar_inv = st.form_submit_button("Registrar Inversión e Incrementar Stock")
-
-            if btn_registrar_inv:
-                nueva_inv = pd.DataFrame([{
-                    "ID Inversión": f"INV-00{len(st.session_state.inversiones)+1}",
-                    "Fecha de Inversión": str(fecha_inv),
-                    "Monto de Inversión ($)": monto_inv,
-                    "Producto Invertido": prod_sel,
-                    "Cantidad Ingresada": cant_inv
-                }])
-                st.session_state.inversiones = pd.concat([st.session_state.inversiones, nueva_inv], ignore_index=True)
-
-                idx = st.session_state.inventario.index[st.session_state.inventario['Código'] == prod_sel].tolist()[0]
-                st.session_state.inventario.at[idx, "Cantidad"] += cant_inv
-                st.session_state.inventario.at[idx, "Última Fecha Ingreso"] = str(fecha_inv)
-
-                st.success("Inversión guardada y stock de inventario incrementado.")
-                st.rerun()
-
-# =============================================================================
-# PESTAÑA 4: VENTAS
-# =============================================================================
-with tab_vta:
-    st.header("💰 Registro de Ventas")
-    st.caption("Control de transacciones con opciones para actualizar (✏️) o anular/eliminar (🗑️).")
-
-    if not st.session_state.ventas.empty:
-        header_cols = st.columns([0.6, 0.6, 1, 1.2, 1.8, 1.2, 0.8, 1.2, 1.2])
-        header_cols[0].write("**🗑️**")
-        header_cols[1].write("**✏️**")
-        header_cols[2].write("**ID Venta**")
-        header_cols[3].write("**Fecha**")
-        header_cols[4].write("**Cliente**")
-        header_cols[5].write("**Producto**")
-        header_cols[6].write("**Cant.**")
-        header_cols[7].write("**Pago**")
-        header_cols[8].write("**Estado**")
-        st.divider()
-
-        for idx, row in st.session_state.ventas.iterrows():
-            c_del, c_edit, c_id, c_date, c_cli, c_prod, c_qty, c_pay, c_status = st.columns([0.6, 0.6, 1, 1.2, 1.8, 1.2, 0.8, 1.2, 1.2])
-
-            # Eliminar Venta
-            if c_del.button("🗑️", key=f"del_vta_{idx}"):
-                p_code = row["Producto"]
-                qty = row["Cantidad"]
-
-                # Reponer stock al cancelar/eliminar venta
-                idx_p = st.session_state.inventario.index[st.session_state.inventario["Código"] == p_code].tolist()
-                if idx_p:
-                    st.session_state.inventario.at[idx_p[0], "Cantidad"] += qty
-
-                st.session_state.ventas = st.session_state.ventas.drop(idx).reset_index(drop=True)
-                st.success("Venta eliminada y stock restituido.")
-                st.rerun()
-
-            # Editar Venta
-            if c_edit.button("✏️️", key=f"edit_vta_{idx}"):
-                st.session_state.edit_state = {"tab": "ventas", "id": idx}
-                st.rerun()
-
-            c_id.write(row["ID Venta"])
-            c_date.write(str(row["Fecha de Venta"]))
-            c_cli.write(row["Cliente"])
-            c_prod.write(row["Producto"])
-            c_qty.write(row["Cantidad"])
-            c_pay.write(row["Pago"])
-            c_status.write(row["Estado"])
-
-    else:
-        st.info("No hay ventas registradas.")
-
-    st.markdown("---")
-
-    # Formulario de edición de Venta
-    if st.session_state.edit_state["tab"] == "ventas":
-        e_idx = st.session_state.edit_state["id"]
-        if e_idx in st.session_state.ventas.index:
-            curr_row = st.session_state.ventas.loc[e_idx]
-            st.subheader(f"✏️ Editar Venta: {curr_row['ID Venta']}")
-            
-            lista_clientes = (st.session_state.clientes["Nombre"] + " " + st.session_state.clientes["Apellido"]).tolist() if not st.session_state.clientes.empty else ["Cliente Anonimo"]
-            lista_prods = st.session_state.inventario["Código"].tolist()
-
+        with st.expander(f"✏️ Editando Venta: {target_id}", expanded=True):
             with st.form("form_edit_venta"):
-                col1, col2 = st.columns(2)
-                try:
-                    f_val = datetime.strptime(str(curr_row["Fecha de Venta"]), "%Y-%m-%d")
-                except:
-                    f_val = datetime.now()
-                e_date = col1.date_input("Fecha de Venta", value=f_val)
-                
-                cli_idx = lista_clientes.index(curr_row["Cliente"]) if curr_row["Cliente"] in lista_clientes else 0
-                e_cli = col2.selectbox("Cliente", lista_clientes, index=cli_idx)
-
-                col3, col4 = st.columns(2)
-                p_idx = lista_prods.index(curr_row["Producto"]) if curr_row["Producto"] in lista_prods else 0
-                e_prod = col3.selectbox("Producto", lista_prods, index=p_idx)
-                e_qty = col4.number_input("Cantidad", min_value=1, value=int(curr_row["Cantidad"]))
-
-                col5, col6 = st.columns(2)
-                pagos = ["Efectivo", "Transferencia", "Crédito"]
-                pay_idx = pagos.index(curr_row["Pago"]) if curr_row["Pago"] in pagos else 0
-                e_pay = col5.selectbox("Pago", pagos, index=pay_idx)
-
-                estados = ["Pendiente", "Finalizado"]
-                st_idx = estados.index(curr_row["Estado"]) if curr_row["Estado"] in estados else 0
-                e_status = col6.selectbox("Estado", estados, index=st_idx)
+                col_e1, col_e2, col_e3, col_e4 = st.columns(4)
+                fecha_v_edit = col_e1.date_input("Fecha", value=pd.to_datetime(row_data["Fecha de Venta"]).date())
+                pago_edit = col_e2.selectbox("Pago", ["Efectivo", "Transferencia", "Crédito"], index=["Efectivo", "Transferencia", "Crédito"].index(row_data["Pago"]))
+                estado_edit = col_e3.selectbox("Estado", ["Pendiente", "Finalizado"], index=["Pendiente", "Finalizado"].index(row_data["Estado"]))
+                monto_edit = col_e4.number_input("Monto Total ($)", min_value=0.0, value=float(row_data["Monto ($)"]))
 
                 btn_save = st.form_submit_button("💾 Guardar Cambios")
-                btn_cancel = st.form_submit_button("❌ Cancelar")
-
                 if btn_save:
-                    # Reajustar inventario
-                    old_prod = curr_row["Producto"]
-                    old_qty = curr_row["Cantidad"]
+                    idx_target = st.session_state.ventas.index[st.session_state.ventas["ID Venta"] == target_id][0]
+                    estado_prev = st.session_state.ventas.at[idx_target, "Estado"]
 
-                    # Reponer previo
-                    idx_old = st.session_state.inventario.index[st.session_state.inventario["Código"] == old_prod].tolist()
-                    if idx_old:
-                        st.session_state.inventario.at[idx_old[0], "Cantidad"] += old_qty
+                    # Ajuste de stock por cambio de estado
+                    p_code = row_data["Producto"]
+                    cant = row_data["Cantidad"]
+                    idx_inv = st.session_state.inventario.index[st.session_state.inventario["Código"] == p_code].tolist()
 
-                    # Descontar nuevo
-                    idx_new = st.session_state.inventario.index[st.session_state.inventario["Código"] == e_prod].tolist()
-                    if idx_new:
-                        st.session_state.inventario.at[idx_new[0], "Cantidad"] = max(0, st.session_state.inventario.at[idx_new[0], "Cantidad"] - e_qty)
+                    if idx_inv:
+                        if estado_prev != "Finalizado" and estado_edit == "Finalizado":
+                            st.session_state.inventario.at[idx_inv[0], "Stock"] = max(0, st.session_state.inventario.at[idx_inv[0], "Stock"] - cant)
+                        elif estado_prev == "Finalizado" and estado_edit == "Pendiente":
+                            st.session_state.inventario.at[idx_inv[0], "Stock"] += cant
 
-                    st.session_state.ventas.at[e_idx, "Fecha de Venta"] = str(e_date)
-                    st.session_state.ventas.at[e_idx, "Cliente"] = e_cli
-                    st.session_state.ventas.at[e_idx, "Producto"] = e_prod
-                    st.session_state.ventas.at[e_idx, "Cantidad"] = e_qty
-                    st.session_state.ventas.at[e_idx, "Pago"] = e_pay
-                    st.session_state.ventas.at[e_idx, "Estado"] = e_status
+                    st.session_state.ventas.at[idx_target, "Fecha de Venta"] = str(fecha_v_edit)
+                    st.session_state.ventas.at[idx_target, "Pago"] = pago_edit
+                    st.session_state.ventas.at[idx_target, "Estado"] = estado_edit
+                    st.session_state.ventas.at[idx_target, "Monto ($)"] = monto_edit
 
-                    st.session_state.edit_state = {"tab": None, "id": None}
-                    st.success("Venta y stock actualizados correctamente.")
+                    st.session_state.edit_target = {"tab": None, "id": None}
+                    st.success("¡Venta actualizada!")
                     st.rerun()
 
-                if btn_cancel:
-                    st.session_state.edit_state = {"tab": None, "id": None}
-                    st.rerun()
-
-    # Formulario registrar venta
-    st.subheader("➕ Registrar Nueva Venta")
-    if st.session_state.inventario.empty:
-        st.warning("No hay productos disponibles.")
-    else:
-        lista_clientes = (st.session_state.clientes["Nombre"] + " " + st.session_state.clientes["Apellido"]).tolist() if not st.session_state.clientes.empty else ["Cliente Anonimo"]
-        lista_prods = st.session_state.inventario["Código"].tolist()
-
-        with st.form("form_venta", clear_on_submit=True):
-            v_col1, v_col2 = st.columns(2)
-            fecha_vta = v_col1.date_input("Fecha de Venta", value=datetime.now())
-            cliente_sel = v_col2.selectbox("Cliente", lista_clientes)
-
-            v_col3, v_col4 = st.columns(2)
-            prod_vta = v_col3.selectbox("Producto (Código)", lista_prods)
+    # Formulario para AÑADIR NUEVA VENTA
+    st.markdown("---")
+    with st.expander("➕ Registrar Nueva Venta"):
+        if st.session_state.inventario.empty:
+            st.warning("No hay productos disponibles en inventario.")
+        else:
+            list_clientes = [f"{r['Nombre']} {r['Apellido']}" for _, r in st.session_state.clientes.iterrows()] if not st.session_state.clientes.empty else ["Cliente Anónimo"]
             
-            stock_actual = st.session_state.inventario[st.session_state.inventario["Código"] == prod_vta]["Cantidad"].values[0]
-            cant_vta = v_col4.number_input(f"Cantidad (Stock Disp: {stock_actual})", min_value=1, max_value=max(1, int(stock_actual)), value=1)
+            with st.form("form_add_venta", clear_on_submit=True):
+                col_a1, col_a2, col_a3, col_a4 = st.columns(4)
+                fecha_v_new = col_a1.date_input("Fecha de Venta", value=date.today())
+                cliente_v_new = col_a2.selectbox("Cliente", list_clientes)
+                pago_v_new = col_a3.selectbox("Pago", ["Efectivo", "Transferencia", "Crédito"])
+                estado_v_new = col_a4.selectbox("Estado", ["Finalizado", "Pendiente"])
 
-            v_col5, v_col6 = st.columns(2)
-            pago_sel = v_col5.selectbox("Pago", ["Efectivo", "Transferencia", "Crédito"])
-            estado_sel = v_col6.selectbox("Estado", ["Pendiente", "Finalizado"])
+                col_a5, col_a6, col_a7 = st.columns(3)
+                prod_v_new = col_a5.selectbox("Producto", st.session_state.inventario["Código"].tolist())
+                cant_v_new = col_a6.number_input("Cantidad Vendida", min_value=1, value=1)
+                monto_v_new = col_a7.number_input("Monto Total ($)", min_value=0.0, value=50.0)
 
-            btn_vta = st.form_submit_button("Registrar Venta")
+                btn_add_vta = st.form_submit_button("🛒 Finalizar y Registrar Venta")
+                if btn_add_vta:
+                    idx_p = st.session_state.inventario.index[st.session_state.inventario["Código"] == prod_v_new][0]
+                    stock_actual = st.session_state.inventario.at[idx_p, "Stock"]
 
-            if btn_vta:
-                if stock_actual < cant_vta:
-                    st.error("No hay suficiente stock disponible en inventario.")
-                else:
-                    idx_prod = st.session_state.inventario.index[st.session_state.inventario['Código'] == prod_vta].tolist()[0]
-                    st.session_state.inventario.at[idx_prod, "Cantidad"] -= cant_vta
+                    if estado_v_new == "Finalizado" and stock_actual < cant_v_new:
+                        st.error(f"Stock insuficiente. Solo quedan {stock_actual} unidades disponibles de {prod_v_new}.")
+                    else:
+                        new_id_v = f"V-50{len(st.session_state.ventas)+1}"
+                        new_vta = pd.DataFrame([{
+                            "ID Venta": new_id_v,
+                            "Fecha de Venta": str(fecha_v_new),
+                            "Cliente": cliente_v_new,
+                            "Pago": pago_v_new,
+                            "Estado": estado_v_new,
+                            "Producto": prod_v_new,
+                            "Cantidad": cant_v_new,
+                            "Monto ($)": monto_v_new
+                        }])
+                        st.session_state.ventas = pd.concat([st.session_state.ventas, new_vta], ignore_index=True)
 
-                    nueva_vta = pd.DataFrame([{
-                        "ID Venta": f"V-00{len(st.session_state.ventas)+1}",
-                        "Fecha de Venta": str(fecha_vta),
-                        "Cliente": cliente_sel,
-                        "Producto": prod_vta,
-                        "Cantidad": cant_vta,
-                        "Pago": pago_sel,
-                        "Estado": estado_sel
-                    }])
-                    st.session_state.ventas = pd.concat([st.session_state.ventas, nueva_vta], ignore_index=True)
+                        # Descontar stock si está finalizada
+                        if estado_v_new == "Finalizado":
+                            st.session_state.inventario.at[idx_p, "Stock"] -= cant_v_new
 
-                    st.success("Venta realizada. Se ha actualizado el stock del inventario.")
-                    st.rerun()
+                        st.success(f"Venta {new_id_v} registrada correctamente.")
+                        st.rerun()
