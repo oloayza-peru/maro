@@ -1,250 +1,266 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+from datetime import datetime
 
-# Configuración inicial de la página
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN GENERAL DE LA APLICACIÓN
+# -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="MARO - Dashboard & Gestión de Joyería",
+    page_title="MARO - Sistema de Gestión de Joyería",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+st.title("💎 MARO - Sistema de Gestión de Joyería")
+st.caption("Especializado en análisis de datos y control de operaciones de joyería")
+
 # -----------------------------------------------------------------------------
-# INICIALIZACIÓN Y PERSISTENCIA DE DATOS (Simulación de Base de Datos en Memoria)
+# INICIALIZACIÓN DE LA BASE DE DATOS EN MEMORIA (st.session_state)
 # -----------------------------------------------------------------------------
+
+# 1. INVENTARIO
 if "inventario" not in st.session_state:
     st.session_state.inventario = pd.DataFrame([
-        {"SKU": "JOY-001", "Nombre": "Anillo Oro 18K Solitario", "Categoría": "Anillos", "Costo ($)": 120.0, "Precio ($)": 250.0, "Stock": 15},
-        {"SKU": "JOY-002", "Nombre": "Cadena Plata 925 Delgado", "Categoría": "Cadenas", "Costo ($)": 25.0, "Precio ($)": 60.0, "Stock": 30},
-        {"SKU": "JOY-003", "Nombre": "Aretes Perla Cultivada", "Categoría": "Aretes", "Costo ($)": 40.0, "Precio ($)": 95.0, "Stock": 8},
+        {
+            "Código": "JOY-001",
+            "Nombre": "Collar de Oro Solitario",
+            "Tipo": "Collar",
+            "Cantidad": 10,
+            "Última Fecha Ingreso": "2026-09-15"
+        },
+        {
+            "Código": "JOY-002",
+            "Nombre": "Aretes Perla Cultivada",
+            "Tipo": "Arete",
+            "Cantidad": 15,
+            "Última Fecha Ingreso": "2026-09-20"
+        },
+        {
+            "Código": "JOY-003", "Nombre": "Pulsera Plata 925", "Tipo": "Pulsera", "Cantidad": 8, "Última Fecha Ingreso": "2026-09-25"},
+        {
+            "Código": "JOY-004",
+            "Nombre": "Aro de Matrimonio 18K",
+            "Tipo": "Aro",
+            "Cantidad": 5,
+            "Última Fecha Ingreso": "2026-09-28"
+        }
     ])
 
-if "ventas" not in st.session_state:
-    st.session_state.ventas = pd.DataFrame([
-        {"ID Venta": "V-1001", "SKU": "JOY-001", "Cantidad": 2, "Precio Unit. ($)": 250.0, "Ingreso Total ($)": 500.0, "Costo Total ($)": 240.0, "Ganancia ($)": 260.0, "Fecha": "2026-09-28"},
-        {"ID Venta": "V-1002", "SKU": "JOY-002", "Cantidad": 5, "Precio Unit. ($)": 60.0, "Ingreso Total ($)": 300.0, "Costo Total ($)": 125.0, "Ganancia ($)": 175.0, "Fecha": "2026-09-29"},
+# 2. CLIENTES
+if "clientes" not in st.session_state:
+    st.session_state.clientes = pd.DataFrame([
+        {"ID Cliente": "CLI-001", "Nombre": "María", "Apellido": "García", "Celular": "987654321"},
+        {"ID Cliente": "CLI-002", "Nombre": "Carlos", "Apellido": "Pérez", "Celular": "912345678"}
     ])
 
+# 3. INVERSIONES
 if "inversiones" not in st.session_state:
     st.session_state.inversiones = pd.DataFrame([
-        {"ID Inversión": "INV-001", "Tipo": "Sustitución/Compra Stock", "Descripción": "Lote inicial de anillos", "Monto ($)": 1800.0, "Fecha": "2026-09-01"},
-        {"ID Inversión": "INV-002", "Tipo": "Marketing / Publicidad", "Descripción": "Campaña en Meta Ads", "Monto ($)": 150.0, "Fecha": "2026-09-15"},
+        {
+            "ID Inversión": "INV-001",
+            "Fecha de Inversión": "2026-09-15",
+            "Monto de Inversión ($)": 500.0,
+            "Producto Invertido": "JOY-001",
+            "Cantidad Ingresada": 10
+        }
+    ])
+
+# 4. VENTAS
+if "ventas" not in st.session_state:
+    st.session_state.ventas = pd.DataFrame([
+        {
+            "ID Venta": "V-001",
+            "Fecha de Venta": "2026-09-29",
+            "Cliente": "María García",
+            "Producto": "JOY-001",
+            "Cantidad": 1,
+            "Pago": "Efectivo",
+            "Estado": "Finalizado"
+        }
     ])
 
 # -----------------------------------------------------------------------------
-# BARRA LATERAL (Navegación)
+# PESTAÑAS PRINCIPALES (Sujetas al diseño de tu boceto)
 # -----------------------------------------------------------------------------
-st.sidebar.image("https://img.icons8.com/emoticons/100/diamond.png", width=80)
-st.sidebar.title("💎 Joyería MARO")
-st.sidebar.caption("Panel Control Ejecutivo & Analytics")
+tab_inv, tab_cli, tab_inv_monto, tab_vta = st.tabs([
+    "1️⃣ Inventario", 
+    "2️⃣ Clientes", 
+    "3️⃣ Inversiones", 
+    "4️⃣ Ventas"
+])
 
-menu = st.sidebar.radio(
-    "Navegación Principal",
-    ["📊 Dashboard KPIs (MBA View)", "📦 Inventario & Compras", "💰 Registro de Ventas", "📈 Inversiones & Gastos"]
-)
-
-st.sidebar.markdown("---")
-st.sidebar.info("**Tip Gerencial:** Un margen bruto saludable en joyería fina se sitúa por encima del 55%. Supervisa constantemente el índice de rotación de inventario.")
-
-# -----------------------------------------------------------------------------
-# PESTAÑA 1: DASHBOARD DE KPIs Y MÉTRICAS FINANCIERAS
-# -----------------------------------------------------------------------------
-if menu == "📊 Dashboard KPIs (MBA View)":
-    st.title("📊 Control de Mando & Indicadores Clave (KPIs)")
-    st.markdown("Visión estratégica del desempeño comercial, rentabilidad y valoración del patrimonio comercial de **MARO**.")
-
-    # Cálculos dinámicos
-    total_ingresos = st.session_state.ventas["Ingreso Total ($)"].sum() if not st.session_state.ventas.empty else 0.0
-    total_costo_ventas = st.session_state.ventas["Costo Total ($)"].sum() if not st.session_state.ventas.empty else 0.0
-    utilidad_bruta = total_ingresos - total_costo_ventas
+# =============================================================================
+# PESTAÑA 1: INVENTARIO
+# =============================================================================
+with tab_inv:
+    st.header("📦 Control de Inventario")
+    st.caption("Listado completo de productos codificados y stock por tipo de joya.")
     
-    total_inversiones = st.session_state.inversiones["Monto ($)"].sum() if not st.session_state.inversiones.empty else 0.0
-    utilidad_neta = utilidad_bruta - total_inversiones
-    
-    valor_inventario_costo = (st.session_state.inventario["Stock"] * st.session_state.inventario["Costo ($)"]).sum() if not st.session_state.inventario.empty else 0.0
-    valor_inventario_pventa = (st.session_state.inventario["Stock"] * st.session_state.inventario["Precio ($)"]).sum() if not st.session_state.inventario.empty else 0.0
-
-    margen_bruto = (utilidad_bruta / total_ingresos * 100) if total_ingresos > 0 else 0.0
-    roi = (utilidad_neta / total_inversiones * 100) if total_inversiones > 0 else 0.0
-
-    # Tarjetas de Resumen
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Ingresos Totales", f"${total_ingresos:,.2f}")
-    col2.metric("Utilidad Bruta", f"${utilidad_bruta:,.2f}", f"Margen Bruto: {margen_bruto:.1f}%")
-    col3.metric("Valor Inventario (al Costo)", f"${valor_inventario_costo:,.2f}")
-    col4.metric("ROI del Negocio", f"{roi:.1f}%", f"Utilidad Neta: ${utilidad_neta:,.2f}")
-
-    st.markdown("---")
-
-    # Gráficos y análisis
-    col_g1, col_g2 = st.columns(2)
-
-    with col_g1:
-        st.subheader("🛍️ Distribución del Stock por Categoría")
-        if not st.session_state.inventario.empty:
-            cat_summary = st.session_state.inventario.groupby("Categoría")["Stock"].sum().reset_index()
-            st.bar_chart(data=cat_summary, x="Categoría", y="Stock")
-        else:
-            st.info("Sin datos de inventario.")
-
-    with col_g2:
-        st.subheader("💵 Ventas Recientes por Fecha")
-        if not st.session_state.ventas.empty:
-            sales_summary = st.session_state.ventas.groupby("Fecha")["Ingreso Total ($)"].sum().reset_index()
-            st.line_chart(data=sales_summary, x="Fecha", y="Ingreso Total ($)")
-        else:
-            st.info("Sin ventas registradas.")
-
-# -----------------------------------------------------------------------------
-# PESTAÑA 2: INVENTARIO & AÑADIR COMPRAS / NUEVOS PRODUCTOS
-# -----------------------------------------------------------------------------
-elif menu == "📦 Inventario & Compras":
-    st.title("📦 Gestión de Inventario y Stock")
-    
-    st.subheader("Catálogo de Productos en Existencia")
+    # Vista general
     st.dataframe(st.session_state.inventario, use_container_width=True)
 
-    st.markdown("---")
-    st.subheader("➕ Añadir Nueva Inversión en Stock / Producto")
-    st.caption("Al ingresar una compra aquí, se actualizará el inventario y se registrará automáticamente la inversión correspondiente.")
+    # Formulario para codificar / agregar un producto directamente al catálogo
+    with st.expander("➕ Codificar Nuevo Producto en Catálogo"):
+        with st.form("form_inventario"):
+            c1, c2, c3 = st.columns(3)
+            codigo = c1.text_input("Codificar cada Producto (Código/SKU)", value=f"JOY-00{len(st.session_state.inventario)+1}")
+            nombre = c2.text_input("Nombre / Descripción de la Joya")
+            tipo = c3.selectbox("Tipo de Joya", ["Collar", "Arete", "Pulsera", "Aro", "Otro"])
+            
+            c4, c5 = st.columns(2)
+            cantidad = c4.number_input("Cantidad Inicial", min_value=0, value=0, step=1)
+            fecha_ingreso = c5.date_input("Última Fecha de Ingreso", value=datetime.now())
 
-    with st.form("form_nuevo_producto", clear_on_submit=True):
-        col_a, col_b, col_c = st.columns(3)
-        sku = col_a.text_input("SKU / Código Unico", value=f"JOY-00{len(st.session_state.inventario)+1}")
-        nombre = col_b.text_input("Nombre del Producto (ej. Dije de Plata 925)")
-        categoria = col_c.selectbox("Categoría", ["Anillos", "Cadenas", "Aretes", "Pulseras", "Dijes", "Otros"])
+            btn_inv = st.form_submit_button("Guardar Producto")
 
-        col_d, col_e, col_f = st.columns(3)
-        costo_u = col_d.number_input("Costo Unitario ($)", min_value=0.1, value=10.0, step=0.5)
-        precio_u = col_e.number_input("Precio de Venta ($)", min_value=0.1, value=25.0, step=0.5)
-        cantidad = col_f.number_input("Cantidad Adquirida", min_value=1, value=5, step=1)
-
-        fecha_compra = st.date_input("Fecha de Adquisición")
-        btn_compra = st.form_submit_button("📥 Registrar Compra e Incrementar Inventario")
-
-        if btn_compra:
-            if not nombre:
-                st.error("Por favor, ingrese un nombre para el producto.")
-            else:
-                # 1. Actualizar o agregar al inventario
-                idx = st.session_state.inventario.index[st.session_state.inventario['SKU'] == sku].tolist()
-                if idx:
-                    # El producto existe, actualizamos stock
-                    st.session_state.inventario.at[idx[0], "Stock"] += cantidad
-                    st.session_state.inventario.at[idx[0], "Costo ($)"] = costo_u
-                    st.session_state.inventario.at[idx[0], "Precio ($)"] = precio_u
+            if btn_inv:
+                if not nombre:
+                    st.error("Ingrese el nombre de la joya.")
                 else:
-                    # Producto nuevo
-                    nuevo_prod = pd.DataFrame([{
-                        "SKU": sku, "Nombre": nombre, "Categoría": categoria, 
-                        "Costo ($)": costo_u, "Precio ($)": precio_u, "Stock": cantidad
+                    nuevo_item = pd.DataFrame([{
+                        "Código": codigo,
+                        "Nombre": nombre,
+                        "Tipo": tipo,
+                        "Cantidad": cantidad,
+                        "Última Fecha Ingreso": str(fecha_ingreso)
                     }])
-                    st.session_state.inventario = pd.concat([st.session_state.inventario, nuevo_prod], ignore_index=True)
+                    st.session_state.inventario = pd.concat([st.session_state.inventario, nuevo_item], ignore_index=True)
+                    st.success(f"Producto '{nombre}' codificado con éxito.")
+                    st.rerun()
 
-                # 2. Registrar reflejo en Inversiones
-                monto_total_inv = costo_u * cantidad
+# =============================================================================
+# PESTAÑA 2: CLIENTES
+# =============================================================================
+with tab_cli:
+    st.header("👥 Directorio de Clientes")
+    st.dataframe(st.session_state.clientes, use_container_width=True)
+
+    st.subheader("➕ Registrar Nuevo Cliente")
+    with st.form("form_cliente", clear_on_submit=True):
+        col_c1, col_c2, col_c3 = st.columns(3)
+        nom_cli = col_c1.text_input("Nombre")
+        ape_cli = col_c2.text_input("Apellido")
+        cel_cli = col_c3.text_input("Celular")
+
+        btn_cli = st.form_submit_button("Registrar Cliente")
+
+        if btn_cli:
+            if not nom_cli or not ape_cli:
+                st.error("Por favor complete Nombre y Apellido.")
+            else:
+                nuevo_cli = pd.DataFrame([{
+                    "ID Cliente": f"CLI-00{len(st.session_state.clientes)+1}",
+                    "Nombre": nom_cli,
+                    "Apellido": ape_cli,
+                    "Celular": cel_cli
+                }])
+                st.session_state.clientes = pd.concat([st.session_state.clientes, nuevo_cli], ignore_index=True)
+                st.success(f"Cliente {nom_cli} {ape_cli} guardado exitosamente.")
+                st.rerun()
+
+# =============================================================================
+# PESTAÑA 3: INVERSIONES
+# =============================================================================
+with tab_inv_monto:
+    st.header("📉 Registro de Inversiones")
+    st.caption("Al registrar una inversión ligada a un producto, el stock en inventario se actualiza automáticamente.")
+
+    st.dataframe(st.session_state.inversiones, use_container_width=True)
+
+    st.subheader("➕ Añadir Nueva Inversión")
+    if st.session_state.inventario.empty:
+        st.warning("Primero debes codificar productos en la pestaña '1. Inventario'.")
+    else:
+        with st.form("form_inversion", clear_on_submit=True):
+            col_i1, col_i2 = st.columns(2)
+            fecha_inv = col_i1.date_input("Fecha de Inversión", value=datetime.now())
+            monto_inv = col_i2.number_input("Monto de Inversión ($)", min_value=0.1, value=100.0, step=10.0)
+
+            col_i3, col_i4 = st.columns(2)
+            # Lista de productos de la pestaña Inventario
+            opciones_prod = st.session_state.inventario["Código"].tolist()
+            prod_sel = col_i3.selectbox("Producto(s) de Inversión (Código)", opciones_prod)
+            cant_inv = col_i4.number_input("Cantidad Adquirida", min_value=1, value=1, step=1)
+
+            btn_registrar_inv = st.form_submit_button("Registrar Inversión e Incrementar Stock")
+
+            if btn_registrar_inv:
+                # 1. Registrar Inversión
                 nueva_inv = pd.DataFrame([{
                     "ID Inversión": f"INV-00{len(st.session_state.inversiones)+1}",
-                    "Tipo": "Compra de Mercadería / Stock",
-                    "Descripción": f"Adquisición de {cantidad} un. de {nombre} ({sku})",
-                    "Monto ($)": monto_total_inv,
-                    "Fecha": str(fecha_compra)
+                    "Fecha de Inversión": str(fecha_inv),
+                    "Monto de Inversión ($)": monto_inv,
+                    "Producto Invertido": prod_sel,
+                    "Cantidad Ingresada": cant_inv
                 }])
                 st.session_state.inversiones = pd.concat([st.session_state.inversiones, nueva_inv], ignore_index=True)
 
-                st.success(f"✅ ¡Compra de {cantidad} unidad(es) de '{nombre}' registrada con éxito! El inventario y las inversiones han sido actualizadas.")
+                # 2. Actualizar Inventario (Stock y Fecha)
+                idx = st.session_state.inventario.index[st.session_state.inventario['Código'] == prod_sel].tolist()[0]
+                st.session_state.inventario.at[idx, "Cantidad"] += cant_inv
+                st.session_state.inventario.at[idx, "Última Fecha Ingreso"] = str(fecha_inv)
+
+                st.success("Inversión guardada y stock de inventario incrementado.")
                 st.rerun()
 
-# -----------------------------------------------------------------------------
-# PESTAÑA 3: REGISTRO DE VENTAS (MODIFICA INVENTARIO AUTOMÁTICAMENTE)
-# -----------------------------------------------------------------------------
-elif menu == "💰 Registro de Ventas":
-    st.title("💰 Registrar Nueva Venta")
-    st.caption("Al confirmar una venta, la cantidad vendida se descuenta automáticamente del inventario disponible.")
+# =============================================================================
+# PESTAÑA 4: VENTAS
+# =============================================================================
+with tab_vta:
+    st.header("💰 Registro de Ventas")
+    st.caption("Gestiona tus operaciones comerciales, medio de pago y estados de venta.")
 
-    if st.session_state.inventario.empty:
-        st.warning("No hay productos disponibles en inventario para vender.")
-    else:
-        # Formulario de Ventas
-        lista_skus = st.session_state.inventario["SKU"].tolist()
-        
-        with st.form("form_venta", clear_on_submit=True):
-            col_v1, col_v2 = st.columns(2)
-            sku_sel = col_v1.selectbox("Seleccionar Producto por SKU", lista_skus)
-            
-            # Obtener datos del SKU seleccionado
-            prod_info = st.session_state.inventario[st.session_state.inventario["SKU"] == sku_sel].iloc[0]
-            col_v2.info(f"**Producto:** {prod_info['Nombre']} | **Stock Actual:** {prod_info['Stock']} | **Precio Sugerido:** ${prod_info['Precio ($)']:.2f}")
-
-            col_v3, col_v4, col_v5 = st.columns(3)
-            cant_venta = col_v3.number_input("Cantidad a Vender", min_value=1, max_value=int(prod_info['Stock']) if prod_info['Stock'] > 0 else 1, value=1)
-            precio_real = col_v4.number_input("Precio Final de Venta ($)", min_value=0.0, value=float(prod_info['Precio ($)']))
-            fecha_vta = col_v5.date_input("Fecha de Venta")
-
-            btn_venta = st.form_submit_button("🛒 Finalizar y Registrar Venta")
-
-            if btn_venta:
-                if prod_info['Stock'] < cant_venta:
-                    st.error(f"Stock insuficiente. Solo quedan {prod_info['Stock']} unidades disponibles.")
-                else:
-                    # 1. Restar stock en inventario
-                    idx = st.session_state.inventario.index[st.session_state.inventario['SKU'] == sku_sel].tolist()[0]
-                    st.session_state.inventario.at[idx, "Stock"] -= cant_venta
-
-                    # 2. Registrar Venta
-                    ingreso = precio_real * cant_venta
-                    costo_t = prod_info['Costo ($)'] * cant_venta
-                    ganancia = ingreso - costo_t
-
-                    reg_venta = pd.DataFrame([{
-                        "ID Venta": f"V-{1000 + len(st.session_state.ventas)+1}",
-                        "SKU": sku_sel,
-                        "Cantidad": cant_venta,
-                        "Precio Unit. ($)": precio_real,
-                        "Ingreso Total ($)": ingreso,
-                        "Costo Total ($)": costo_t,
-                        "Ganancia ($)": ganancia,
-                        "Fecha": str(fecha_vta)
-                    }])
-                    st.session_state.ventas = pd.concat([st.session_state.ventas, reg_venta], ignore_index=True)
-
-                    st.success(f"🎉 ¡Venta registrada exitosamente! Se descontaron {cant_venta} unidades del SKU {sku_sel}.")
-                    st.rerun()
-
-    st.markdown("---")
-    st.subheader("📋 Historial de Ventas")
     st.dataframe(st.session_state.ventas, use_container_width=True)
 
-# -----------------------------------------------------------------------------
-# PESTAÑA 4: INVERSIONES & GASTOS OPERATIVOS
-# -----------------------------------------------------------------------------
-elif menu == "📈 Inversiones & Gastos":
-    st.title("📈 Control de Inversiones y Gastos Operativos")
-    st.markdown("Añade gastos adicionales como empaques, marketing, transportes o personal para obtener la **utilidad neta exacta**.")
+    st.subheader("➕ Registrar Nueva Venta")
+    
+    if st.session_state.inventario.empty:
+        st.warning("No hay productos disponibles.")
+    else:
+        # Preparar lista de clientes para selector
+        lista_clientes = (st.session_state.clientes["Nombre"] + " " + st.session_state.clientes["Apellido"]).tolist() if not st.session_state.clientes.empty else ["Cliente Anonimo"]
+        
+        # Preparar lista de productos con stock
+        lista_prods = st.session_state.inventario["Código"].tolist()
 
-    with st.form("form_gastos", clear_on_submit=True):
-        col_g1, col_g2 = st.columns(2)
-        tipo_inv = col_g1.selectbox("Tipo de Inversión/Gasto", ["Marketing / Publicidad", "Empaques y Presentación", "Logística y Envíos", "Sueldos / Comisiones", "Herramientas y Maquinaria", "Otros"])
-        monto_inv = col_g2.number_input("Monto ($)", min_value=0.1, value=50.0, step=5.0)
+        with st.form("form_venta", clear_on_submit=True):
+            v_col1, v_col2 = st.columns(2)
+            fecha_vta = v_col1.date_input("Fecha de Venta", value=datetime.now())
+            cliente_sel = v_col2.selectbox("Cliente", lista_clientes)
 
-        desc_inv = st.text_input("Descripción breve (ej. Compra de cajitas de terciopelo con logo MARO)")
-        fecha_inv = st.date_input("Fecha del Gasto")
+            v_col3, v_col4 = st.columns(2)
+            prod_vta = v_col3.selectbox("Producto (Código)", lista_prods)
+            
+            # Obtener stock actual
+            stock_actual = st.session_state.inventario[st.session_state.inventario["Código"] == prod_vta]["Cantidad"].values[0]
+            cant_vta = v_col4.number_input(f"Cantidad (Stock Disp: {stock_actual})", min_value=1, max_value=max(1, int(stock_actual)), value=1)
 
-        btn_gasto = st.form_submit_button("💳 Registrar Inversión / Gasto")
+            v_col5, v_col6 = st.columns(2)
+            pago_sel = v_col5.selectbox("Pago", ["Efectivo", "Transferencia", "Crédito"])
+            estado_sel = v_col6.selectbox("Estado", ["Pendiente", "Finalizado"])
 
-        if btn_gasto:
-            nueva_inv = pd.DataFrame([{
-                "ID Inversión": f"INV-00{len(st.session_state.inversiones)+1}",
-                "Tipo": tipo_inv,
-                "Descripción": desc_inv if desc_inv else tipo_inv,
-                "Monto ($)": monto_inv,
-                "Fecha": str(fecha_inv)
-            }])
-            st.session_state.inversiones = pd.concat([st.session_state.inversiones, nueva_inv], ignore_index=True)
-            st.success("✅ Inversión/Gasto registrado correctamente.")
-            st.rerun()
+            btn_vta = st.form_submit_button("Registrar Venta")
 
-    st.markdown("---")
-    st.subheader("Registro Central de Inversiones y Gastos")
-    st.dataframe(st.session_state.inversiones, use_container_width=True)
+            if btn_vta:
+                if stock_actual < cant_vta:
+                    st.error("No hay suficiente stock disponible en inventario.")
+                else:
+                    # 1. Descontar Stock si la venta finaliza o se descuenta por reserva
+                    idx_prod = st.session_state.inventario.index[st.session_state.inventario['Código'] == prod_vta].tolist()[0]
+                    st.session_state.inventario.at[idx_prod, "Cantidad"] -= cant_vta
+
+                    # 2. Registrar la venta
+                    nueva_vta = pd.DataFrame([{
+                        "ID Venta": f"V-00{len(st.session_state.ventas)+1}",
+                        "Fecha de Venta": str(fecha_vta),
+                        "Cliente": cliente_sel,
+                        "Producto": prod_vta,
+                        "Cantidad": cant_vta,
+                        "Pago": pago_sel,
+                        "Estado": estado_sel
+                    }])
+                    st.session_state.ventas = pd.concat([st.session_state.ventas, nueva_vta], ignore_index=True)
+
+                    st.success("Venta realizada. Se ha actualizado el stock del inventario.")
+                    st.rerun()
